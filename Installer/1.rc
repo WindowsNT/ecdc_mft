@@ -1,0 +1,23 @@
+#include <windows.h>
+ICON_1 ICON "..\\app.ico"
+#ifdef _WIN64
+#ifdef _DEBUG
+DLL DATA "..\\dll\\x64\\debug\\ecdc_mft.dll"
+#else
+DLL DATA "..\\dll\\x64\\release\\ecdc_mft.dll"
+#endif
+#else
+DLL DATA "..\\dll\\release\\ecdc_mft.dll"
+#endif
+_7Z DATA "7zr.exe"
+PYTHON DATA "python.7z"
+
+
+
+DIALOG_MESSAGE DIALOGEX 0, 0, 375, 73
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU | WS_VISIBLE | DS_CENTER
+FONT 8, "MS Shell Dlg", 400, 0, 0x1
+BEGIN
+CTEXT           "", 101, 21, 30, 330, 11
+END
+

@@ -1,0 +1,7 @@
+EXPORTS
+DllRegisterServer=DllRegisterServer
+DllUnregisterServer
+DllGetClassObject
+DllCanUnloadNow
+
+
