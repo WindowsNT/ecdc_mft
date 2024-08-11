@@ -26,7 +26,7 @@ If you want to produce MP4 files that use Encodec then check the test applicatio
 
 * Source media type PCM 48000Hz, 16-bit, 2 channels
 * Target media type with the provided MFAudioFormat_ECDC
-* With ICodecAPI you can set `MFEHDC_BANDWIDTH` and `MFEHDC_VISIBLE`
+* With ICodecAPI you can set `MFEHDC_BANDWIDTH` (3.0,6.0,9.0,12.0,24.0) and `MFEHDC_VISIBLE` (0,1)
 * Before Finalize, pass the provided sample descriptor with MF_MT_MPEG4_CURRENT_SAMPLE_ENTRY
 
 My sequencer [Turbo Play](https://www.turbo-play.com) can also create .ecdc files automatically.
