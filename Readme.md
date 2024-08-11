@@ -1,5 +1,5 @@
 # ECDC MFT
-Conversion of Facebook's Encodec to a Media Foundation DLL so be used in Media Foundation Applications
+Conversion of Facebook's Encodec to a Media Foundation DLL to be used in Windows Media Foundation Applications
 
 ## Introduction
 
