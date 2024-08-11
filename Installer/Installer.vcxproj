@@ -24,6 +24,7 @@
     <ProjectGuid>{f39b7c89-8b36-47a2-9082-417792c30d50}</ProjectGuid>
     <RootNamespace>Installer</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <ProjectName>ecdc_mft_installer</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">

@@ -17,6 +17,8 @@ processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 #include <atlbase.h>
 #include "..\\common.h"
 
+
+
 std::wstring InstallECDC()
 {
 	auto hX = GetModuleHandle(0);
@@ -100,7 +102,18 @@ void Remove()
 	r2.DeleteSingle(L"{AB87DC03-AACF-4A75-8739-D83CF14BE9C5}");
 
 	wchar_t wd[1000] = {};
-	GetSystemDirectory(wd, 1000);
+	PWSTR pSystem = 0;
+#ifdef _WIN64
+	SHGetKnownFolderPath(FOLDERID_System, 0, 0, &pSystem);
+#else
+	SHGetKnownFolderPath(FOLDERID_SystemX86, 0, 0, &pSystem);
+#endif
+	if (pSystem)
+	{
+		wcscpy_s(wd, 1000, pSystem);
+		CoTaskMemFree(pSystem);
+	}
+
 	wchar_t wdt[1000] = {};
 	swprintf_s(wdt, L"%s\\ecdc_mft.dll", wd);
 
@@ -118,7 +131,17 @@ void Remove()
 HRESULT Install()
 {
 	wchar_t wd[1000] = {};
-	GetSystemDirectory(wd, 1000);
+	PWSTR pSystem = 0;
+#ifdef _WIN64
+	SHGetKnownFolderPath(FOLDERID_System, 0, 0, &pSystem);
+#else
+	SHGetKnownFolderPath(FOLDERID_SystemX86, 0, 0, &pSystem);
+#endif
+	if (!pSystem)
+		return E_FAIL;
+	wcscpy_s(wd, 1000, pSystem);
+	CoTaskMemFree(pSystem);
+
 	wchar_t me[1000] = {};
 	GetModuleFileName(0,me,1000);
 	wchar_t wdt[1000] = {};
@@ -190,7 +213,7 @@ HRESULT Install()
 
 bool IsInstalled()
 {
-	RKEY k(HKEY_LOCAL_MACHINE, L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\{AB87DC03-AACF-4A75-8739-D83CF14BE9C5}", KEY_READ | KEY_WOW64_64KEY, true);
+	RKEY k(HKEY_LOCAL_MACHINE, L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\{AB87DC03-AACF-4A75-8739-D83CF14BE9C5}", KEY_READ, true);
 	return k.Valid();
 }
 
@@ -212,5 +235,6 @@ int __stdcall WinMain(HINSTANCE,HINSTANCE,LPSTR,int)
 			return 0;
 		Install();
 	}
+	return 1;
 }
 
