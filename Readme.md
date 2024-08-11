@@ -3,7 +3,7 @@ Conversion of Facebook's Encodec to a Media Foundation DLL to be used in Windows
 
 ## Introduction
 
-[FacebookResearch Encodec](https://github.com/facebookresearch/encodec) is a state-of-the-art AI audio compression and decompression high extremely high compression ratios.
+[FacebookResearch Encodec](https://github.com/facebookresearch/encodec) is a state-of-the-art AI audio compression and decompression high extremely high compression ratios. This is a Media Foundation Codec implementation of it so Windows MF apps can write and read mp4 files that contain sound compressed with Encodec.
 
 ## Building
 A VS solution is provided to build the installer, the DLL and a test application automatically. Just load ecdc_mft.sln. Alternatively, if you just want to install it, run the prebuilt, digitally signed executables ecdc_mft_installer64.exe and ecdc_mft_installer32.exe.
