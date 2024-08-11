@@ -45,6 +45,9 @@ If you have installed Encodec MFT, then Media-Foundation capable applications wi
 Note that the Encodec MFT processes the entire input at once, that means that you will see the Encodec running when trying to read the first sample with `ReadSample()`.
 
 
+# Using the encoder/decoder
+
+You can also instantiate directly an IMFTransorm with `CoCreateInstance(guid, 0, CLSCTX_ALL, __uuidof(IMFTransform), (void**)&trs1);`. Guid is IID_EcdcTransform1 for the compressor and IID_EcdcTransform2 for the decompressor. Once you drain the compressor, the output can be directly written to an .ecdc file. 
 
 	
 
