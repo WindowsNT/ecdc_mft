@@ -6,6 +6,7 @@ public:
 
 	ULONG ref = 1;
 	CComPtr<IMFMediaType> cmt;
+	std::wstring file;
 
 	ECDCSink()
 	{
@@ -212,7 +213,7 @@ public:
 		/* [out] */ __RPC__out DWORD* pdwIdentifier)
 	{
 		if (!pdwIdentifier) return E_POINTER;
-		*pdwIdentifier = 0;
+		*pdwIdentifier = usid;
 		return S_OK;
 	}
 
@@ -324,11 +325,12 @@ public:
 		
 };
 
-HRESULT __stdcall CreateSink(IMFMediaSink** s) 
+HRESULT __stdcall CreateSink(const wchar_t* file,IMFMediaSink** s) 
 {
-	if (!s)
+	if (!s || !file)
 		return E_POINTER;
 	ECDCSink* e = new ECDCSink;
+	e->file = file;
 	*s = e;
 	return S_OK;
 }

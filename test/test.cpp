@@ -403,21 +403,19 @@ UINT8 caac[100] = {
 	{
 		// Media Sink
 		auto hL = LoadLibrary(L"ecdc_mft.dll");
-		typedef HRESULT(__stdcall* ii)(IMFMediaSink**);
+		typedef HRESULT(__stdcall* ii)(const wchar_t* file,IMFMediaSink**);
 		ii I = (ii)GetProcAddress(hL, "CreateSink");
 		if (I)
 		{
+			std::wstring fi2 = L"1.ecdc";
+			DeleteFile(fi2.c_str());
 			CComPtr<IMFMediaSink> ecdcsink;
-			I(&ecdcsink);
+			I(fi2.c_str(),&ecdcsink);
 			if (ecdcsink)
 			{
-				std::wstring fi2 = L"1.ecdc";
-				DeleteFile(fi2.c_str());
 				hr = MFCreateSinkWriterFromMediaSink(ecdcsink,0, &wr);
 
 				DWORD sidx = 0;
-				CComPtr<IMFMediaType> ecdc;
-				MFCreateMediaType(&ecdc);
 				if (wr)
 				{
 					// Add the audio stream
@@ -432,27 +430,15 @@ UINT8 caac[100] = {
 					ina->SetUINT32(MF_MT_AUDIO_BITS_PER_SAMPLE, br);
 					ina->SetGUID(MF_MT_MAJOR_TYPE, MFMediaType_Audio);
 
+					ina->SetDouble(MFEHDC_BANDWIDTH, bw);
+					ina->SetUINT32(MFEHDC_VISIBLE, 1);
+
 					hr = wr->AddStream(ina, &sidx);
 					hr = wr->SetInputMediaType(sidx, ina, 0);
 				}
 				if (wr)
 				{
 					hr = wr->BeginWriting();
-
-					// Set the bandwidth and show
-					CComPtr<ICodecAPI> ca;
-					auto hr = wr->GetServiceForStream(sidx, GUID_NULL, __uuidof(ICodecAPI), (void**)&ca);
-					if (ca)
-					{
-						VARIANT v = {};
-						v.vt = VT_R8;
-						v.dblVal = bw;
-						ca->SetValue(&MFEHDC_BANDWIDTH, &v);
-						VARIANT v2 = {};
-						v2.vt = VT_I4;
-						v2.intVal = 1;
-						ca->SetValue(&MFEHDC_VISIBLE, &v2);
-					}
 
 					int testseconds = 60;
 					std::vector<char> pcm = FillPCM(sr, nch, br, testseconds);
