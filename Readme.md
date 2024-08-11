@@ -15,10 +15,10 @@ ECDC MFT requires x64. `ecdc_mft_installer32.exe` will install the 32-bit DLL fo
 Installer will:
 
 	1. Install the dll and uninstaller in System directory
-	2. Install to c:\ProgramData\EncodecMFT{BE60AF19-1EFD-4130-8D0F-43EBAC9D6C8F}
-	--* Python
-	--* Torch for CUDA if you have a NVidia card (really recommended) or plain Torch
-	--* Encodec
+	2. Install to c:\ProgramData\EncodecMFT{BE60AF19-1EFD-4130-8D0F-43EBAC9D6C8F}:
+		* Python
+		* Torch for CUDA if you have a NVidia card (really recommended) or plain Torch
+		* Encodec
 	
 # Using in your own applications
 
