@@ -20,6 +20,46 @@
 
 #include "..\\common.h"
 
+std::vector<char> FillPCM(int sr,int nch,int br,int secs)
+{
+	std::vector<char> pcm;
+	pcm.resize(br / 8 * nch * sr * secs);
+
+	// Fill with sine wave
+	size_t ni = 0;
+	for (int i = 0; i < secs; i++)
+	{
+		float hz = (float)(440.0f + i * 20.0f);
+		for (int s = 0; s < sr; s++)
+		{
+			int mch = nch;
+			float sample = 1.0f * (float)sin(2.0f * 3.1415f * (float)s / (float)sr * hz);
+			if (br == 16)
+			{
+				short* p = (short*)pcm.data();
+				short s = (short)(sample * 32767.0f);
+				while (mch > 0)
+				{
+					p[ni++] = s;
+					mch--;
+				}
+			}
+			if (br == 8)
+			{
+				uint8_t* p = (uint8_t*)pcm.data();
+				uint8_t s = (uint8_t)(sample * 127);
+				while (mch > 0)
+				{
+					p[ni++] = s;
+					mch--;
+				}
+
+			}
+		}
+	}
+	return pcm;
+}
+
 int main()
 {
 	CoInitializeEx(0, COINIT_APARTMENTTHREADED);
@@ -127,12 +167,6 @@ UINT8 caac[100] = {
 	};
 
 	std::wstring fi = L"1.mp4";
-	if (1)
-	{
-		DeleteFile(fi.c_str());
-		MFCreateSinkWriterFromURL(fi.c_str(), 0, 0, &wr);
-	}
-
 	// These stay fixed
 	int nch = 2;
 	int sr = 48000;
@@ -143,252 +177,317 @@ UINT8 caac[100] = {
 	bool AlsoVideo = 0;
 
 
-	DWORD sidx = 0, vidx = 0;
-	if (AlsoVideo)
+
+	if (1)
 	{
-		CComPtr<IMFMediaType> pMediaTypeOutVideo;
-		CComPtr<IMFMediaType> pMediaTypeVideoIn;
-		hr = MFCreateMediaType(&pMediaTypeVideoIn);
-		hr = MFCreateMediaType(&pMediaTypeOutVideo);
+		DeleteFile(fi.c_str());
+		MFCreateSinkWriterFromURL(fi.c_str(), 0, 0, &wr);
 
-		pMediaTypeVideoIn->SetGUID(MF_MT_MAJOR_TYPE, MFMediaType_Video);
-		pMediaTypeVideoIn->SetGUID(MF_MT_SUBTYPE, MFVideoFormat_RGB32);
-		MFSetAttributeSize(pMediaTypeVideoIn, MF_MT_FRAME_SIZE, 1920,1080);
-		MFSetAttributeRatio(pMediaTypeVideoIn, MF_MT_FRAME_RATE, 30, 1);
-		MFSetAttributeRatio(pMediaTypeVideoIn, MF_MT_PIXEL_ASPECT_RATIO, 1, 1);
-
-		pMediaTypeOutVideo->SetGUID(MF_MT_MAJOR_TYPE, MFMediaType_Video);
-		pMediaTypeOutVideo->SetGUID(MF_MT_SUBTYPE, MFVideoFormat_H264);
-		MFSetAttributeSize(pMediaTypeOutVideo, MF_MT_FRAME_SIZE, 1920, 1080);
-		MFSetAttributeRatio(pMediaTypeOutVideo, MF_MT_FRAME_RATE, 30, 1);
-		MFSetAttributeRatio(pMediaTypeOutVideo, MF_MT_PIXEL_ASPECT_RATIO, 1, 1);
-		pMediaTypeOutVideo->SetUINT32(MF_MT_INTERLACE_MODE, MFVideoInterlace_Progressive);
-		pMediaTypeOutVideo->SetUINT32(MF_MT_AVG_BITRATE, 80000000);
-
-		hr = wr->AddStream(pMediaTypeOutVideo, &vidx);
-		hr = wr->SetInputMediaType(vidx, pMediaTypeVideoIn, NULL);
-	}
-
-	CComPtr<IMFMediaType> ecdc;
-	MFCreateMediaType(&ecdc);
-	if (wr)
-	{
-		// Add the audio stream
-		CComPtr<IMFMediaType> ina;
-		MFCreateMediaType(&ina);
-		ina->SetGUID(MF_MT_SUBTYPE, MFAudioFormat_PCM);
-		ina->SetUINT32(MF_MT_AUDIO_NUM_CHANNELS, nch);
-		ina->SetUINT32(MF_MT_AUDIO_SAMPLES_PER_SECOND, sr);
-		int BA = (int)((br / 8) * nch);
-		ina->SetUINT32(MF_MT_AUDIO_AVG_BYTES_PER_SECOND, (UINT32)(sr * BA));
-		ina->SetUINT32(MF_MT_AUDIO_BLOCK_ALIGNMENT, BA);
-		ina->SetUINT32(MF_MT_AUDIO_BITS_PER_SAMPLE, br);
-		ina->SetGUID(MF_MT_MAJOR_TYPE, MFMediaType_Audio);
-
-		ecdc->SetGUID(MF_MT_MAJOR_TYPE, MFMediaType_Audio);
-		ecdc->SetGUID(MF_MT_SUBTYPE, MFAudioFormat_ECDC);
-
-		ecdc->SetUINT32(MF_MT_AUDIO_NUM_CHANNELS, nch);
-		ecdc->SetUINT32(MF_MT_AUDIO_SAMPLES_PER_SECOND, sr);
-
-		hr = wr->AddStream(ecdc, &sidx);
-		LogMediaType(ecdc);
-
-		hr = wr->SetInputMediaType(sidx, ina, 0);
-	}
-	if (wr)
-	{
-		hr = wr->BeginWriting();
-
-		// Set the bandwidth and show
-		CComPtr<ICodecAPI> ca;
-		auto hr = wr->GetServiceForStream(sidx, GUID_NULL, __uuidof(ICodecAPI), (void**)&ca);
-		if (ca)
+		DWORD sidx = 0, vidx = 0;
+		if (AlsoVideo)
 		{
-			VARIANT v = {};
-			v.vt = VT_R8;
-			v.dblVal = bw;
-			ca->SetValue(&MFEHDC_BANDWIDTH, &v);
-			VARIANT v2 = {};
-			v2.vt = VT_I4;
-			v2.intVal = 1;
-			ca->SetValue(&MFEHDC_VISIBLE, &v2);
+			CComPtr<IMFMediaType> pMediaTypeOutVideo;
+			CComPtr<IMFMediaType> pMediaTypeVideoIn;
+			hr = MFCreateMediaType(&pMediaTypeVideoIn);
+			hr = MFCreateMediaType(&pMediaTypeOutVideo);
+
+			pMediaTypeVideoIn->SetGUID(MF_MT_MAJOR_TYPE, MFMediaType_Video);
+			pMediaTypeVideoIn->SetGUID(MF_MT_SUBTYPE, MFVideoFormat_RGB32);
+			MFSetAttributeSize(pMediaTypeVideoIn, MF_MT_FRAME_SIZE, 1920, 1080);
+			MFSetAttributeRatio(pMediaTypeVideoIn, MF_MT_FRAME_RATE, 30, 1);
+			MFSetAttributeRatio(pMediaTypeVideoIn, MF_MT_PIXEL_ASPECT_RATIO, 1, 1);
+
+			pMediaTypeOutVideo->SetGUID(MF_MT_MAJOR_TYPE, MFMediaType_Video);
+			pMediaTypeOutVideo->SetGUID(MF_MT_SUBTYPE, MFVideoFormat_H264);
+			MFSetAttributeSize(pMediaTypeOutVideo, MF_MT_FRAME_SIZE, 1920, 1080);
+			MFSetAttributeRatio(pMediaTypeOutVideo, MF_MT_FRAME_RATE, 30, 1);
+			MFSetAttributeRatio(pMediaTypeOutVideo, MF_MT_PIXEL_ASPECT_RATIO, 1, 1);
+			pMediaTypeOutVideo->SetUINT32(MF_MT_INTERLACE_MODE, MFVideoInterlace_Progressive);
+			pMediaTypeOutVideo->SetUINT32(MF_MT_AVG_BITRATE, 80000000);
+
+			hr = wr->AddStream(pMediaTypeOutVideo, &vidx);
+			hr = wr->SetInputMediaType(vidx, pMediaTypeVideoIn, NULL);
 		}
 
-		// Set the sample descriptor
-		if (1)
+		CComPtr<IMFMediaType> ecdc;
+		MFCreateMediaType(&ecdc);
+		if (wr)
 		{
-			CComPtr<IMFMediaSink> pSink;
-			CComPtr<IMFStreamSink> s2;
-			CComPtr<IMFMediaTypeHandler> mth;
-			CComPtr<IMFMediaType> mt2;
-			wr->GetServiceForStream(MF_SINK_WRITER_MEDIASINK, GUID_NULL, IID_PPV_ARGS(&pSink));
-			pSink->GetStreamSinkByIndex(sidx, &s2);
-			s2->GetMediaTypeHandler(&mth);
-			mth->GetCurrentMediaType(&mt2);
-			LogMediaType(mt2);
-			mt2->SetBlob(MF_MT_MPEG4_SAMPLE_DESCRIPTION, (UINT8*)cz, sizeof(cz));
-			mt2->SetUINT32(MF_MT_MPEG4_CURRENT_SAMPLE_ENTRY, 0);
-			mth->SetCurrentMediaType(mt2);
-			mt2 = 0;
-			mth->GetCurrentMediaType(&mt2);
-			LogMediaType(mt2);
+			// Add the audio stream
+			CComPtr<IMFMediaType> ina;
+			MFCreateMediaType(&ina);
+			ina->SetGUID(MF_MT_SUBTYPE, MFAudioFormat_PCM);
+			ina->SetUINT32(MF_MT_AUDIO_NUM_CHANNELS, nch);
+			ina->SetUINT32(MF_MT_AUDIO_SAMPLES_PER_SECOND, sr);
+			int BA = (int)((br / 8) * nch);
+			ina->SetUINT32(MF_MT_AUDIO_AVG_BYTES_PER_SECOND, (UINT32)(sr * BA));
+			ina->SetUINT32(MF_MT_AUDIO_BLOCK_ALIGNMENT, BA);
+			ina->SetUINT32(MF_MT_AUDIO_BITS_PER_SAMPLE, br);
+			ina->SetGUID(MF_MT_MAJOR_TYPE, MFMediaType_Audio);
+
+			ecdc->SetGUID(MF_MT_MAJOR_TYPE, MFMediaType_Audio);
+			ecdc->SetGUID(MF_MT_SUBTYPE, MFAudioFormat_ECDC);
+
+			ecdc->SetUINT32(MF_MT_AUDIO_NUM_CHANNELS, nch);
+			ecdc->SetUINT32(MF_MT_AUDIO_SAMPLES_PER_SECOND, sr);
+
+			hr = wr->AddStream(ecdc, &sidx);
+			LogMediaType(ecdc);
+
+			hr = wr->SetInputMediaType(sidx, ina, 0);
 		}
-
-		std::vector<char> pcm;
-		int testseconds = 60;
-		pcm.resize(br / 8 * nch * sr * testseconds);
-
-		// Fill with sine wave
-		size_t ni = 0;
-		for (int i = 0; i < testseconds ; i++)
+		if (wr)
 		{
-			float hz = (float)(440.0f + i*20.0f);
-			for (int s = 0; s < sr; s++)
+			hr = wr->BeginWriting();
+
+			// Set the bandwidth and show
+			CComPtr<ICodecAPI> ca;
+			auto hr = wr->GetServiceForStream(sidx, GUID_NULL, __uuidof(ICodecAPI), (void**)&ca);
+			if (ca)
 			{
-				int mch = nch;
-				float sample = 1.0f*(float)sin(2.0f*3.1415f*(float)s/(float)sr*hz);
-				if (br == 16)
-				{
-					short* p = (short*)pcm.data();
-					short s = (short)(sample * 32767.0f);
-					while (mch > 0)
-					{
-						p[ni++] = s;
-						mch--;
-					}	
-				}
-				if (br == 8)
-				{
-					uint8_t* p = (uint8_t*)pcm.data();
-					uint8_t s = (uint8_t)(sample * 127);
-					while (mch > 0)
-					{
-						p[ni++] = s;
-						mch--;
-					}
-
-				}
+				VARIANT v = {};
+				v.vt = VT_R8;
+				v.dblVal = bw;
+				ca->SetValue(&MFEHDC_BANDWIDTH, &v);
+				VARIANT v2 = {};
+				v2.vt = VT_I4;
+				v2.intVal = 1;
+				ca->SetValue(&MFEHDC_VISIBLE, &v2);
 			}
-		}
 
-		for (int i = 0; i < 60; i++)
-		{
-			if (sidx > 0)
+			// Set the sample descriptor
+			if (1)
 			{
-				// Also video
-				unsigned int need = 1920 * 1080 * 4;
+				CComPtr<IMFMediaSink> pSink;
+				CComPtr<IMFStreamSink> s2;
+				CComPtr<IMFMediaTypeHandler> mth;
+				CComPtr<IMFMediaType> mt2;
+				wr->GetServiceForStream(MF_SINK_WRITER_MEDIASINK, GUID_NULL, IID_PPV_ARGS(&pSink));
+				pSink->GetStreamSinkByIndex(sidx, &s2);
+				s2->GetMediaTypeHandler(&mth);
+				mth->GetCurrentMediaType(&mt2);
+				LogMediaType(mt2);
+				mt2->SetBlob(MF_MT_MPEG4_SAMPLE_DESCRIPTION, (UINT8*)cz, sizeof(cz));
+				mt2->SetUINT32(MF_MT_MPEG4_CURRENT_SAMPLE_ENTRY, 0);
+				mth->SetCurrentMediaType(mt2);
+				mt2 = 0;
+				mth->GetCurrentMediaType(&mt2);
+				LogMediaType(mt2);
+			}
+
+			int testseconds = 60;
+			std::vector<char> pcm = FillPCM(sr, nch, br, testseconds);
+
+			for (int i = 0; i < testseconds; i++)
+			{
+				if (sidx > 0)
+				{
+					// Also video
+					unsigned int need = 1920 * 1080 * 4;
+					CComPtr<IMFSample> s;
+					MFCreateSample(&s);
+					CComPtr<IMFMediaBuffer> b;
+					MFCreateMemoryBuffer(need, &b);
+					b->SetCurrentLength(need);
+					s->AddBuffer(b);
+
+					s->SetSampleTime(a2vi(sr * i, sr));
+					s->SetSampleDuration(a2vi(sr, sr));
+					hr = wr->WriteSample(vidx, s);
+				}
+
+				// 1 second of data
 				CComPtr<IMFSample> s;
 				MFCreateSample(&s);
 				CComPtr<IMFMediaBuffer> b;
-				MFCreateMemoryBuffer(need, &b);
-				b->SetCurrentLength(need);
+				MFCreateMemoryBuffer(sr * nch * (br / 8), &b);
+				b->SetCurrentLength(sr * nch * (br / 8));
+				BYTE* pb = 0;
+				DWORD ml = 0, cl = 0;
+
+				b->Lock(&pb, &ml, &cl);
+				memcpy(pb, pcm.data() + i * sr * nch * (br / 8), sr * nch * (br / 8));
+				b->Unlock();
 				s->AddBuffer(b);
+
 
 				s->SetSampleTime(a2vi(sr * i, sr));
 				s->SetSampleDuration(a2vi(sr, sr));
-				hr = wr->WriteSample(vidx, s);
+				hr = wr->WriteSample(sidx, s);
 			}
 
-			// 1 second of data
-			CComPtr<IMFSample> s;
-			MFCreateSample(&s);
-			CComPtr<IMFMediaBuffer> b;
-			MFCreateMemoryBuffer(sr*nch*(br/8), &b);
-			b->SetCurrentLength(sr* nch* (br / 8));
-			BYTE* pb = 0;
-			DWORD ml = 0, cl = 0;
+			hr = wr->Finalize();
 
-			b->Lock(&pb, &ml, &cl);
-			memcpy(pb, pcm.data() + i * sr * nch * (br / 8), sr* nch* (br / 8));
-			b->Unlock();
-			s->AddBuffer(b);
-
-
-			s->SetSampleTime(a2vi(sr*i,sr));
-			s->SetSampleDuration(a2vi(sr, sr));
-			hr = wr->WriteSample(sidx, s);
+			wr = 0;
 		}
-
-		hr = wr->Finalize();
-
-		wr = 0;
 	}
 
-	CComPtr<IMFSourceReader> srr;
-	hr = MFCreateSourceReaderFromURL(fi.c_str(), 0, &srr);
-	if (srr)
+	if (1)
 	{
-		CComPtr<IMFMediaType> c;
-		srr->GetCurrentMediaType(MF_SOURCE_READER_FIRST_AUDIO_STREAM, &c);
-		LogMediaType(c);
-
-		CComPtr<IMFMediaType> ina;
-		MFCreateMediaType(&ina);
-		ina->SetGUID(MF_MT_SUBTYPE, MFAudioFormat_PCM);
-		ina->SetUINT32(MF_MT_AUDIO_NUM_CHANNELS, nch);
-		ina->SetUINT32(MF_MT_AUDIO_SAMPLES_PER_SECOND, sr);
-		int BA = (int)((br / 8) * nch);
-		ina->SetUINT32(MF_MT_AUDIO_AVG_BYTES_PER_SECOND, (UINT32)(sr* BA));
-		ina->SetUINT32(MF_MT_AUDIO_BLOCK_ALIGNMENT, BA);
-		ina->SetUINT32(MF_MT_AUDIO_BITS_PER_SAMPLE, br);
-		ina->SetGUID(MF_MT_MAJOR_TYPE, MFMediaType_Audio);
-
-		LogMediaType(ina);
-		hr = srr->SetCurrentMediaType(MF_SOURCE_READER_FIRST_AUDIO_STREAM, 0, ina);
-
-
-		// Set the show
-		CComPtr<ICodecAPI> ca;
-		hr = srr->GetServiceForStream(MF_SOURCE_READER_FIRST_AUDIO_STREAM, GUID_NULL, __uuidof(ICodecAPI), (void**)&ca);
-		if (ca)
+		CComPtr<IMFSourceReader> srr;
+		hr = MFCreateSourceReaderFromURL(fi.c_str(), 0, &srr);
+		if (srr)
 		{
-			VARIANT v2 = {};
-			v2.vt = VT_I4;
-			v2.intVal = 1;
-			ca->SetValue(&MFEHDC_VISIBLE, &v2);
-		}
+			CComPtr<IMFMediaType> c;
+			srr->GetCurrentMediaType(MF_SOURCE_READER_FIRST_AUDIO_STREAM, &c);
+			LogMediaType(c);
+
+			CComPtr<IMFMediaType> ina;
+			MFCreateMediaType(&ina);
+			ina->SetGUID(MF_MT_SUBTYPE, MFAudioFormat_PCM);
+			ina->SetUINT32(MF_MT_AUDIO_NUM_CHANNELS, nch);
+			ina->SetUINT32(MF_MT_AUDIO_SAMPLES_PER_SECOND, sr);
+			int BA = (int)((br / 8) * nch);
+			ina->SetUINT32(MF_MT_AUDIO_AVG_BYTES_PER_SECOND, (UINT32)(sr * BA));
+			ina->SetUINT32(MF_MT_AUDIO_BLOCK_ALIGNMENT, BA);
+			ina->SetUINT32(MF_MT_AUDIO_BITS_PER_SAMPLE, br);
+			ina->SetGUID(MF_MT_MAJOR_TYPE, MFMediaType_Audio);
+
+			LogMediaType(ina);
+			hr = srr->SetCurrentMediaType(MF_SOURCE_READER_FIRST_AUDIO_STREAM, 0, ina);
 
 
-	}
-	if (SUCCEEDED(hr))
-	{
-		for (;;)
-		{
-			DWORD asidx = 0;
-			DWORD flags = 0;
-			LONGLONG gs = 0;
-			CComPtr<IMFSample> s;
-			srr->ReadSample(MF_SOURCE_READER_FIRST_AUDIO_STREAM, 0, &asidx, &flags, &gs, &s);
-
-			if (!s)
+			// Set the show
+			CComPtr<ICodecAPI> ca;
+			hr = srr->GetServiceForStream(MF_SOURCE_READER_FIRST_AUDIO_STREAM, GUID_NULL, __uuidof(ICodecAPI), (void**)&ca);
+			if (ca)
 			{
-				if (flags & MF_SOURCE_READERF_ERROR)
-					break;
-				if (flags & MF_SOURCE_READERF_ENDOFSTREAM)
-					break;
+				VARIANT v2 = {};
+				v2.vt = VT_I4;
+				v2.intVal = 1;
+				ca->SetValue(&MFEHDC_VISIBLE, &v2);
 			}
 
 
-			CComPtr<IMFMediaBuffer> b;
-			s->ConvertToContiguousBuffer(&b);
-			if (!b)
-				continue;
+		}
+		if (SUCCEEDED(hr))
+		{
+			for (;;)
+			{
+				DWORD asidx = 0;
+				DWORD flags = 0;
+				LONGLONG gs = 0;
+				CComPtr<IMFSample> s;
+				srr->ReadSample(MF_SOURCE_READER_FIRST_AUDIO_STREAM, 0, &asidx, &flags, &gs, &s);
 
-			DWORD ml = 0, cl = 0;
-			BYTE* bb = 0;
-			b->Lock(&bb, &ml, &cl);
-			if (!bb)
-				continue;
+				if (!s)
+				{
+					if (flags & MF_SOURCE_READERF_ERROR)
+						break;
+					if (flags & MF_SOURCE_READERF_ENDOFSTREAM)
+						break;
+				}
 
-			std::vector<char> d(cl);
-			memcpy(d.data(), bb, cl);
-//			PutFile(L"out.pcm", d, true);
 
-			b->Unlock();
+				CComPtr<IMFMediaBuffer> b;
+				s->ConvertToContiguousBuffer(&b);
+				if (!b)
+					continue;
+
+				DWORD ml = 0, cl = 0;
+				BYTE* bb = 0;
+				b->Lock(&bb, &ml, &cl);
+				if (!bb)
+					continue;
+
+				std::vector<char> d(cl);
+				memcpy(d.data(), bb, cl);
+				//			PutFile(L"out.pcm", d, true);
+
+				b->Unlock();
+			}
 		}
 	}
 
+	if (0)
+	{
+		// Media Sink
+		auto hL = LoadLibrary(L"ecdc_mft.dll");
+		typedef HRESULT(__stdcall* ii)(IMFMediaSink**);
+		ii I = (ii)GetProcAddress(hL, "CreateSink");
+		if (I)
+		{
+			CComPtr<IMFMediaSink> ecdcsink;
+			I(&ecdcsink);
+			if (ecdcsink)
+			{
+				std::wstring fi2 = L"1.ecdc";
+				DeleteFile(fi2.c_str());
+				hr = MFCreateSinkWriterFromMediaSink(ecdcsink,0, &wr);
+
+				DWORD sidx = 0;
+				CComPtr<IMFMediaType> ecdc;
+				MFCreateMediaType(&ecdc);
+				if (wr)
+				{
+					// Add the audio stream
+					CComPtr<IMFMediaType> ina;
+					MFCreateMediaType(&ina);
+					ina->SetGUID(MF_MT_SUBTYPE, MFAudioFormat_PCM);
+					ina->SetUINT32(MF_MT_AUDIO_NUM_CHANNELS, nch);
+					ina->SetUINT32(MF_MT_AUDIO_SAMPLES_PER_SECOND, sr);
+					int BA = (int)((br / 8) * nch);
+					ina->SetUINT32(MF_MT_AUDIO_AVG_BYTES_PER_SECOND, (UINT32)(sr * BA));
+					ina->SetUINT32(MF_MT_AUDIO_BLOCK_ALIGNMENT, BA);
+					ina->SetUINT32(MF_MT_AUDIO_BITS_PER_SAMPLE, br);
+					ina->SetGUID(MF_MT_MAJOR_TYPE, MFMediaType_Audio);
+
+					hr = wr->AddStream(ina, &sidx);
+					hr = wr->SetInputMediaType(sidx, ina, 0);
+				}
+				if (wr)
+				{
+					hr = wr->BeginWriting();
+
+					// Set the bandwidth and show
+					CComPtr<ICodecAPI> ca;
+					auto hr = wr->GetServiceForStream(sidx, GUID_NULL, __uuidof(ICodecAPI), (void**)&ca);
+					if (ca)
+					{
+						VARIANT v = {};
+						v.vt = VT_R8;
+						v.dblVal = bw;
+						ca->SetValue(&MFEHDC_BANDWIDTH, &v);
+						VARIANT v2 = {};
+						v2.vt = VT_I4;
+						v2.intVal = 1;
+						ca->SetValue(&MFEHDC_VISIBLE, &v2);
+					}
+
+					int testseconds = 60;
+					std::vector<char> pcm = FillPCM(sr, nch, br, testseconds);
+
+					for (int i = 0; i < testseconds; i++)
+					{
+						// 1 second of data
+						CComPtr<IMFSample> s;
+						MFCreateSample(&s);
+						CComPtr<IMFMediaBuffer> b;
+						MFCreateMemoryBuffer(sr * nch * (br / 8), &b);
+						b->SetCurrentLength(sr * nch * (br / 8));
+						BYTE* pb = 0;
+						DWORD ml = 0, cl = 0;
+
+						b->Lock(&pb, &ml, &cl);
+						memcpy(pb, pcm.data() + i * sr * nch * (br / 8), sr * nch * (br / 8));
+						b->Unlock();
+						s->AddBuffer(b);
+
+
+						s->SetSampleTime(a2vi(sr * i, sr));
+						s->SetSampleDuration(a2vi(sr, sr));
+						hr = wr->WriteSample(sidx, s);
+					}
+
+					hr = wr->Finalize();
+					wr = 0;
+					ecdcsink->Shutdown();
+				}
+			}
+		}
+		if (hL)
+			FreeLibrary(hL);
+	}
 
 	return 0;
 }

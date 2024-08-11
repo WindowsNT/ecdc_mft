@@ -20,6 +20,9 @@
 #pragma comment(lib,"mfuuid.lib")
 
 #include "..\\common.h"
+#include "guids.hpp"
+
+#include "sink.hpp"
 
 HINSTANCE hDLL = 0;
 
@@ -41,7 +44,6 @@ BOOL WINAPI DllMain(HINSTANCE hInstance, ULONG ulReason, LPVOID)
 	return TRUE;
 }
 
-#include "guids.hpp"
 
 std::wstring InstallECDC()
 {

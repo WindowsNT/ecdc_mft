@@ -3,5 +3,5 @@ DllRegisterServer=DllRegisterServer
 DllUnregisterServer
 DllGetClassObject
 DllCanUnloadNow
-
+CreateSink=CreateSink
 
