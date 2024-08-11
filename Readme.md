@@ -35,7 +35,7 @@ Note that the Encodec MFT processes the entire input at once, that means that yo
 
 # Using the decompressor
 
-If you have installed Encodec MFT, then Media-Foundation capable appliiocations will automatically be able to open mp4 files compressed with encodec MFT. In your application you can
+If you have installed Encodec MFT, then Media-Foundation capable applications will automatically be able to open mp4 files compressed with Encodec MFT. In your application you can:
 
 * Create the IMFSourceReader
 * Set the current media type to PCM 48000Hz, 16-bit, 2 channels
