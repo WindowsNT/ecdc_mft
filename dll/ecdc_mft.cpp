@@ -80,6 +80,7 @@ class EcdcTransform : public IMFTransform, public ICodecAPI
 	int br = 16;
 	int nch = 2;
 	int sr = 48000;
+	bool RelaxedIn = true;
 
 
 	typedef struct WAV_HEADER {
@@ -95,7 +96,7 @@ class EcdcTransform : public IMFTransform, public ICodecAPI
 		uint16_t NumOfChan = 2;   // Number of channels 1=Mono 2=Sterio
 		uint32_t SamplesPerSec = 48000;   // Sampling Frequency in Hz
 		uint32_t bytesPerSec = 192000; // bytes per second
-		uint16_t blockAlign = 2;          // 2=16-bit mono, 4=16-bit stereo
+		uint16_t blockAlign = 4;          // 2=16-bit mono, 4=16-bit stereo
 		uint16_t bitsPerSample = 16;      // Number of bits per sample
 		/* "data" sub-chunk */
 		uint8_t Subchunk2ID[4] = { 'd', 'a', 't', 'a' }; // "data"  string
@@ -113,40 +114,27 @@ public:
 
 		folder = InstallECDC();
 
-		if (mode == 0)
-		{
-			sr = 48000;
-			br = 16;
-			nch = 2;
-			RKEY k(kr, L"Software\\Classes\\CLSID\\{24E223B6-57F3-4CA3-AB9F-A1F669937346}", KEY_ALL_ACCESS);
-		}
-		if (mode == 1)
-		{
-			sr = 48000;
-			br = 16;
-			nch = 2;
-			RKEY k(kr, L"Software\\Classes\\CLSID\\{24E223B6-57F3-4CA3-AB9F-A1F669937347}", KEY_ALL_ACCESS);
-		}
-
-
-
 		CComPtr<IMFMediaType> ina;
 		MFCreateMediaType(&ina);
-		ina->SetGUID(MF_MT_SUBTYPE, MFAudioFormat_PCM);
-		ina->SetUINT32(MF_MT_AUDIO_NUM_CHANNELS, nch);
-		ina->SetUINT32(MF_MT_AUDIO_SAMPLES_PER_SECOND, sr);
-		int BA = (int)((br / 8) * nch);
-		ina->SetUINT32(MF_MT_AUDIO_AVG_BYTES_PER_SECOND, (UINT32)(sr * BA));
-		ina->SetUINT32(MF_MT_AUDIO_BLOCK_ALIGNMENT, BA);
-		ina->SetUINT32(MF_MT_AUDIO_BITS_PER_SAMPLE, br);
 		ina->SetGUID(MF_MT_MAJOR_TYPE, MFMediaType_Audio);
+		ina->SetGUID(MF_MT_SUBTYPE, MFAudioFormat_PCM);
+
+		if (RelaxedIn == false || mode == 1)
+		{
+			ina->SetUINT32(MF_MT_AUDIO_NUM_CHANNELS, nch);
+			ina->SetUINT32(MF_MT_AUDIO_SAMPLES_PER_SECOND, sr);
+			int BA = (int)((br / 8) * nch);
+			ina->SetUINT32(MF_MT_AUDIO_AVG_BYTES_PER_SECOND, (UINT32)(sr * BA));
+			ina->SetUINT32(MF_MT_AUDIO_BLOCK_ALIGNMENT, BA);
+			ina->SetUINT32(MF_MT_AUDIO_BITS_PER_SAMPLE, br);
+		}
 		pcm = ina;
 
 		MFCreateMediaType(&ecdc);
 		ecdc->SetGUID(MF_MT_MAJOR_TYPE, MFMediaType_Audio);
 		ecdc->SetGUID(MF_MT_SUBTYPE, MFAudioFormat_ECDC);
-		ecdc->SetUINT32(MF_MT_AUDIO_NUM_CHANNELS, nch);
-		ecdc->SetUINT32(MF_MT_AUDIO_SAMPLES_PER_SECOND, sr);
+		ecdc->SetUINT32(MF_MT_AUDIO_NUM_CHANNELS, 2);
+		ecdc->SetUINT32(MF_MT_AUDIO_SAMPLES_PER_SECOND, 48000);
 	}
 
 	// Inherited via IMFTransform
@@ -325,16 +313,30 @@ public:
 		LogMediaType(ecdc);
 		if (mode == 1)
 		{
-			pcm->Compare(pType, MF_ATTRIBUTES_MATCH_OUR_ITEMS, &r1);
+			// Input must be ECDC
 			ecdc->Compare(pType, MF_ATTRIBUTES_MATCH_OUR_ITEMS, &r2);
 		}
 		else
 		{
-			pType->Compare(pcm, MF_ATTRIBUTES_MATCH_OUR_ITEMS, &r1);
-			pType->Compare(ecdc, MF_ATTRIBUTES_MATCH_OUR_ITEMS, &r2);
+			// Input must be PCM
+			pcm->Compare(pType, MF_ATTRIBUTES_MATCH_OUR_ITEMS, &r1);
 		}
 		if (!r1 && !r2)
 			return E_FAIL;
+
+		if (mode == 0 && RelaxedIn)
+		{
+			UINT32 v = 0;
+			pType->GetUINT32(MF_MT_AUDIO_SAMPLES_PER_SECOND, &v);
+			if (v)
+				sr = v;
+			pType->GetUINT32(MF_MT_AUDIO_NUM_CHANNELS, &v);
+			if (v)
+				nch = v;
+			pType->GetUINT32(MF_MT_AUDIO_BITS_PER_SAMPLE, &v);
+			if (v)
+				br = v;
+		}
 
 		return S_OK;
 	}
@@ -347,8 +349,8 @@ public:
 			return MF_E_INVALIDTYPE;
 		BOOL r1 = 0;
 		BOOL r2 = 0;
-		pType->Compare(pcm, MF_ATTRIBUTES_MATCH_OUR_ITEMS, &r1);
-		pType->Compare(ecdc, MF_ATTRIBUTES_MATCH_OUR_ITEMS, &r2);
+		pcm->Compare(pType, MF_ATTRIBUTES_MATCH_OUR_ITEMS, &r1);
+		ecdc->Compare(pType, MF_ATTRIBUTES_MATCH_OUR_ITEMS, &r2);
 		if (!r1 && !r2)
 			return E_FAIL;
 		return S_OK;
@@ -410,6 +412,15 @@ public:
 					GetFileSizeEx(hX, &fx);
 					fsize = fx.QuadPart;
 
+
+					if (RelaxedIn)
+					{
+						wav.NumOfChan = nch;
+						wav.bitsPerSample = br;
+						wav.blockAlign = wav.bitsPerSample / 8 * wav.NumOfChan;
+						wav.SamplesPerSec = sr;
+						wav.bytesPerSec = wav.SamplesPerSec * wav.blockAlign;
+					}
 					wav.ChunkSize = (uint32_t)(fsize + sizeof(wav_hdr) - 8);
 					wav.Subchunk2Size = (uint32_t)(fsize + sizeof(wav_hdr) - 44);
 					DWORD A = 0;
@@ -431,9 +442,7 @@ public:
 				if (bw >= 3.0)
 					swprintf_s(ru.data(), 10000, L"\"%s\\scripts\\encodec.exe\" -b %.1f -q -r -f \"%s\" \"%s\"", folder.c_str(), (float)bw, TempInPCM.c_str(), out.c_str());
 
-				swprintf_s(x.data(), 1000,L"Encoding ECDC audio...");
-				if (bw >= 3.0)
-					swprintf_s(x.data(), 1000, L"Encoding ECDC audio [bw = %.1f]...",(float)bw);
+				swprintf_s(x.data(), 1000, L"Encoding ECDC audio [SR = %i,NCH = %i,BR = %i,BW = %.1f]...",sr,nch,br,(float)bw);
 
 
 				Run(hDLL, ru.data(), true, CREATE_NO_WINDOW, vis ? x.data() : 0);

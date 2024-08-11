@@ -167,16 +167,18 @@ UINT8 caac[100] = {
 	};
 
 	std::wstring fi = L"1.mp4";
-	// These stay fixed
+
+	// These have meaning for the encoder
+	// For decoder, the output is always 2 channel 16 bit 48000Hz.
+
 	int nch = 2;
 	int sr = 48000;
 	int br = 16;
 
-	// These can change
-	double bw = 3.0;
-	bool AlsoVideo = 0;
-
-
+	// Parameters
+	double bw = 3.0; // can be 3.0,6.0,9.0,12.0,24.0
+	int Visible = 1; // 0,1
+	bool AlsoVideo = 0; // 0,1
 
 	if (1)
 	{
@@ -228,8 +230,8 @@ UINT8 caac[100] = {
 			ecdc->SetGUID(MF_MT_MAJOR_TYPE, MFMediaType_Audio);
 			ecdc->SetGUID(MF_MT_SUBTYPE, MFAudioFormat_ECDC);
 
-			ecdc->SetUINT32(MF_MT_AUDIO_NUM_CHANNELS, nch);
-			ecdc->SetUINT32(MF_MT_AUDIO_SAMPLES_PER_SECOND, sr);
+			ecdc->SetUINT32(MF_MT_AUDIO_NUM_CHANNELS, 2);
+			ecdc->SetUINT32(MF_MT_AUDIO_SAMPLES_PER_SECOND, 48000);
 
 			hr = wr->AddStream(ecdc, &sidx);
 			LogMediaType(ecdc);
@@ -251,7 +253,7 @@ UINT8 caac[100] = {
 				ca->SetValue(&MFEHDC_BANDWIDTH, &v);
 				VARIANT v2 = {};
 				v2.vt = VT_I4;
-				v2.intVal = 1;
+				v2.intVal = Visible;
 				ca->SetValue(&MFEHDC_VISIBLE, &v2);
 			}
 
@@ -335,12 +337,11 @@ UINT8 caac[100] = {
 			CComPtr<IMFMediaType> ina;
 			MFCreateMediaType(&ina);
 			ina->SetGUID(MF_MT_SUBTYPE, MFAudioFormat_PCM);
-			ina->SetUINT32(MF_MT_AUDIO_NUM_CHANNELS, nch);
-			ina->SetUINT32(MF_MT_AUDIO_SAMPLES_PER_SECOND, sr);
-			int BA = (int)((br / 8) * nch);
-			ina->SetUINT32(MF_MT_AUDIO_AVG_BYTES_PER_SECOND, (UINT32)(sr * BA));
-			ina->SetUINT32(MF_MT_AUDIO_BLOCK_ALIGNMENT, BA);
-			ina->SetUINT32(MF_MT_AUDIO_BITS_PER_SAMPLE, br);
+			ina->SetUINT32(MF_MT_AUDIO_NUM_CHANNELS, 2);
+			ina->SetUINT32(MF_MT_AUDIO_SAMPLES_PER_SECOND, 48000);
+			ina->SetUINT32(MF_MT_AUDIO_AVG_BYTES_PER_SECOND, (UINT32)(192000));
+			ina->SetUINT32(MF_MT_AUDIO_BLOCK_ALIGNMENT, 4);
+			ina->SetUINT32(MF_MT_AUDIO_BITS_PER_SAMPLE, 16);
 			ina->SetGUID(MF_MT_MAJOR_TYPE, MFMediaType_Audio);
 
 			LogMediaType(ina);
@@ -354,7 +355,7 @@ UINT8 caac[100] = {
 			{
 				VARIANT v2 = {};
 				v2.vt = VT_I4;
-				v2.intVal = 1;
+				v2.intVal = Visible;
 				ca->SetValue(&MFEHDC_VISIBLE, &v2);
 			}
 
@@ -431,7 +432,7 @@ UINT8 caac[100] = {
 					ina->SetGUID(MF_MT_MAJOR_TYPE, MFMediaType_Audio);
 
 					ina->SetDouble(MFEHDC_BANDWIDTH, bw);
-					ina->SetUINT32(MFEHDC_VISIBLE, 1);
+					ina->SetUINT32(MFEHDC_VISIBLE, Visible);
 
 					hr = wr->AddStream(ina, &sidx);
 					hr = wr->SetInputMediaType(sidx, ina, 0);
