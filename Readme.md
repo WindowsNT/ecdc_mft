@@ -22,14 +22,15 @@ Installer will:
 	
 # Using in your own applications
 
-If you want to produce MP4 files that use Encodec then check the test.cpp. You can use the IMFSinkWriter with :
+If you want to produce MP4 files that use Encodec then check the test application. You can use the IMFSinkWriter with :
 
 * Source media type PCM 48000Hz, 16-bit, 2 channels
 * Target media type with the provided MFAudioFormat_ECDC
 * With ICodecAPI you can set `MFEHDC_BANDWIDTH` and `MFEHDC_VISIBLE`
 * Before Finalize, pass the provided sample descriptor with MF_MT_MPEG4_CURRENT_SAMPLE_ENTRY
 
-My sequencer [Turbo Play](https://www.turbo-play.com) can create also .ecdc files automatically.
+My sequencer [Turbo Play](https://www.turbo-play.com) can also create .ecdc files automatically.
+
 Note that the Encodec MFT processes the entire input at once, that means that you will see the Encodec running only when calling `Finalize()`.
 
 # Using the decompressor
